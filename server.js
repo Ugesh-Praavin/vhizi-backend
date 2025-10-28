@@ -27,57 +27,60 @@ mongoose.connect(process.env.MONGO_URI)
 // Twilio setup
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
-// Nodemailer setup
+// Nodemailer setu
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: process.env.EMAIL_HOST,
+  port: process.env.EMAIL_PORT,
+  secure: true,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  logger: true,
+  debug: true,
 });
+
 
 // API Route for contact form
 app.post("/contact", async (req, res) => {
   try {
-    const { name, email,number, message } = req.body;
+    const { name, email, number, occasion, message } = req.body;
 
-    // 1️⃣ Save to MongoDB
-    const newMsg = new Message({ name, email, message });
+    // 1️⃣ Save to DB
+    const newMsg = new Message({ name, email, number, occasion, message });
     await newMsg.save();
 
-    // 2️⃣ Send WhatsApp Message
-   // 2️⃣ Send WhatsApp Message (customized for Vizhi Studios)
-await client.messages.create({
-  from: process.env.TWILIO_WHATSAPP_FROM,
-  to: process.env.MY_WHATSAPP_TO,
-  body: `💬 *New Inquiry via Vizhi Studios Website*\n\n👤 Name: ${name}\n📧 Email: ${email}\n💍 \n Number: ${number}\n Occasion: ${req.body.occasion || "Not specified"}\n📝 Message: ${message}\n\n📸 _Let's capture their beautiful moments!_`,
-});
+    // 2️⃣ Send WhatsApp / SMS
+    await client.messages.create({
+      from: process.env.TWILIO_WHATSAPP_FROM,
+      to: process.env.MY_WHATSAPP_TO,
+      body: `💬 *New Inquiry via Vizhi Studios Website*\n\n👤 Name: ${name}\n📧 Email: ${email}\n📞 Number: ${number}\n💍 Occasion: ${occasion || "Not specified"}\n📝 Message: ${message}\n\n📸 _Let's capture their beautiful moments!_`,
+    });
 
-// 3️⃣ Send Email (branded)
-await transporter.sendMail({
-  from: `"Vizhi Studios" <${process.env.EMAIL_USER}>`,
-  to: process.env.EMAIL_TO,
-  subject: `📸 New Inquiry from ${name} — Vizhi Studios Website`,
-  html: `
-    <h2>New Inquiry from Vizhi Studios Website</h2>
-    <p><b>Name:</b> ${name}</p>
-    <p><b>Email:</b> ${email}</p>
-    <p><b>Number:</b> ${number || "Not provided"}</p>
-
-    <p><b>Occasion:</b> ${req.body.occasion || "Not specified"}</p>
-    <p><b>Message:</b><br>${message}</p>
-    <hr>
-    <p style="font-style: italic;">Sent automatically from Vizhi Studios website 💫</p>
-  `,
-});
-
+    // 3️⃣ Send Email
+    await transporter.sendMail({
+      from: `"Vizhi Studios" <${process.env.EMAIL_USER}>`,
+      to: process.env.EMAIL_TO,
+      subject: `📸 New Inquiry from ${name}`,
+      html: `
+        <h2>New Inquiry via Vizhi Studios Website</h2>
+        <p><b>Name:</b> ${name}</p>
+        <p><b>Email:</b> ${email}</p>
+        <p><b>Phone:</b> ${number}</p>
+        <p><b>Occasion:</b> ${occasion || "Not specified"}</p>
+        <p><b>Message:</b><br>${message}</p>
+        <hr>
+        <p style="font-style: italic; color: gray;">Sent automatically from Vizhi Studios</p>
+      `,
+    });
 
     res.status(200).json({ success: true, message: "Form submitted successfully!" });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Contact Form Error:", err);
     res.status(500).json({ success: false, message: "Error processing request" });
   }
 });
+
 
 // 🩺 Health Check Endpoint
 app.get("/health", async (req, res) => {
