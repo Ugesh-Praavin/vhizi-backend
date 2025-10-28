@@ -12,8 +12,9 @@ dotenv.config();
 const app = express();
 app.use(
   cors({
-    origin: ["https://vizhi-moments-studio.vercel.app"],
-    methods: ["GET", "POST"],
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 app.use(bodyParser.json());
